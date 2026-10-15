@@ -139,11 +139,11 @@ func TestCreateProduct_BadRequest(t *testing.T) {
 	// TODO: Написать Unit-тест для создания продукта с невалидным JSON (400 Bad Request)
 	mock := mocks.NewProducts(t)
 
-	product := models.Product{ID: 23, Name: "", Stock: -2333}
+	// product := models.Product{ID: 23, Name: "", Stock: -2333}
 
-	b, _ := json.Marshal(product)
+	// b, _ := json.Marshal(product)
 
-	req := httptest.NewRequest(http.MethodPost, "/products", bytes.NewReader(b))
+	req := httptest.NewRequest(http.MethodPost, "/products", nil)
 
 	w := httptest.NewRecorder()
 
@@ -238,11 +238,14 @@ func TestUpdateProduct(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			product := models.Product{Name: "Помидор", Price: 32.32, Stock: 214214}
 			b, _ := json.Marshal(product)
+
 			req := httptest.NewRequest(http.MethodPut, "/products/1", bytes.NewReader(b))
-			rctx := chi.NewRouteContext()
-			if tt.wantStatus != 400 {
-				rctx.URLParams.Add("id", "1")
+			if tt.wantStatus == 400 {
+				req = httptest.NewRequest(http.MethodPut, "/products/1", nil)
 			}
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("id", "1")
+
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 			w := httptest.NewRecorder()
 			handler := New(slog.Default(), tt.mock)

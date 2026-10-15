@@ -81,4 +81,10 @@ v4 — История заказов и аналитика (популярные
 
 Были написаны ручные тесты c автомоком
 
+они автоматически сохдаются в products.go
+//go:generate go run github.com/vektra/mockery/v2@v2.53.7 --name=Products
+пример вызова мока в тестах
+	mock := mocks.NewProducts(t)
+	mock.On("CreateProduct", testifymock.Anything, testifymock.Anything).Return(0, errors.New("fail bd"))
+теперь мок инициализируется 3 методами
 запуск - go test ./...
