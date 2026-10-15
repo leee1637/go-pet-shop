@@ -14,6 +14,8 @@ import (
 	"github.com/go-chi/render"
 )
 
+//go:generate mockery --name=Products
+
 type Products interface {
 	GetAllProducts(ctx context.Context) ([]models.Product, error)
 	CreateProduct(ctx context.Context, product models.Product) (int, error)
@@ -132,7 +134,7 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	// Возвращаем созданный продукт с его ID
 	product.ID = productID
 	render.JSON(w, r, map[string]interface{}{
-		"status":  "Product created successfully",
+		"status":  h,
 		"id":      productID,
 		"product": product,
 	})
