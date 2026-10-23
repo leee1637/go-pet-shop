@@ -9,7 +9,7 @@ type Product struct {
 	Stock int // количество на складе
 }
 
-type Customer struct {
+type User struct {
 	ID    int
 	Name  string
 	Email string
@@ -17,7 +17,8 @@ type Customer struct {
 
 type Order struct {
 	ID         int
-	CustomerID int
+	UserID     int
+	TotalPrice string
 	CreatedAt  time.Time
 }
 
