@@ -2,7 +2,6 @@ package storage
 
 import "errors"
 
-var (
-	ErrNotFound     = errors.New("not found")
-	ErrInvalidInput = errors.New("invalid input")
-)
+var ErrNotFound = errors.New("not found")
+var ErrInvalidInput = errors.New("invalid input")
+var ErrConflict = errors.New("conflict")

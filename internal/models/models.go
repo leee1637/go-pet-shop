@@ -28,3 +28,10 @@ type OrderItem struct {
 	ProductID int
 	Quantity  int
 }
+
+type OrderDetail struct {
+	ID        int
+	OrderID   int
+	ProductID int
+	Quantity  int
+}

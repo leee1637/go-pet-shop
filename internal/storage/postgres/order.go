@@ -107,3 +107,84 @@ func (s *Storage) GetOrderItemsByOrderID(ctx context.Context, orderID int) ([]mo
 
 	return sl, nil
 }
+
+// Версия 3: оформление заказа с транзакцией
+// Цели:
+
+// Реализовать полноценное оформление заказа в транзакции.
+// Обновить остатки товара (stock).
+// Создать заказ, позиции заказа и транзакцию оплаты атомарно.
+// Методы (storage interface):
+
+func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []models.OrderItem) (int, error) {
+	tx, err := s.db.Begin(ctx)
+
+	if err != nil {
+		return 0, fmt.Errorf("error start transaction: %w", err)
+	}
+
+	defer tx.Rollback(ctx)
+
+	userID := 0
+	err = tx.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, userEmail).Scan(&userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrNotFound
+		}
+		return 0, fmt.Errorf("get user by email: %w", err)
+	}
+
+	allPrice := 0
+
+	for _, item := range items {
+		price := 0
+		err := tx.QueryRow(ctx, `UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1
+		RETURNING price`, item.Quantity, item.ID).Scan(&price)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return 0, fmt.Errorf("product %d: %w", item.ProductID, ErrNotFound)
+			}
+			return 0, fmt.Errorf("decrease stock product %d: %w", item.ProductID, err)
+		}
+
+		allPrice = allPrice + price
+	}
+
+	var orderID int
+	err = tx.QueryRow(ctx, `INSERT INTO orders (user_id, total_price) VALUES ($1, $2) RETURNING id`).Scan(&orderID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrNotFound
+		}
+		return 0, fmt.Errorf("get user by email: %w", err)
+	}
+
+	for _, item := range items {
+		_, err = tx.Query(ctx, `INSERT INTO order_items (order_id, product_id, quantity)
+		 VALUES ($1, $2, $3)`, orderID, item.ProductID, item.Quantity)
+		if err != nil {
+			return 0, fmt.Errorf("decrease stock product %d: %w", item.ProductID, err)
+		}
+	}
+
+	_, err = tx.Exec(ctx, `INSERT INTO transactions (order_id, amount, status) 
+	VALUES ($1, $2, $3)`, orderID, allPrice, "created")
+	if err != nil {
+		return 0, fmt.Errorf("insert transaction: %w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("insert commit: %w", err)
+	}
+
+	return orderID, nil
+}
+
+// Внутри PlaceOrder:
+// Начать транзакцию
+// Проверить и уменьшить stock товаров (UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1; 0 затронутых строк значит, что товара не хватает, и заказ откатывается)
+// Создать заказ (INSERT INTO orders)
+// Добавить позиции заказа (INSERT INTO order_items)
+// Создать запись транзакции (INSERT INTO transactions)
+// Commit или Rollback в случае ошибки
