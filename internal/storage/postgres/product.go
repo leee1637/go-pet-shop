@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"go-pet-shop/internal/models"
+
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -41,6 +43,25 @@ func (s *Storage) GetAllProducts(ctx context.Context) ([]models.Product, error) 
 	}
 
 	return products, nil
+}
+
+func (s *Storage) GetProductByID(ctx context.Context, id int) (models.Product, error) {
+	query := `SELECT id, name, price, stock FROM products WHERE id = $1`
+
+	p := models.Product{}
+
+	err := s.db.QueryRow(ctx, query, id).Scan(&p.ID, &p.Name, &p.Price, &p.Stock)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Product{}, ErrNotFound
+		}
+
+		return models.Product{}, fmt.Errorf("error: %w", err)
+	}
+
+	return p, nil
+
 }
 
 // CreateProduct - создает продукт и возвращает его ID
