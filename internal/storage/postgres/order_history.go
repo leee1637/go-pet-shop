@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"go-pet-shop/internal/models"
+	"time"
 )
 
 // GetUserOrderHistory(email string) ([]models.OrderDetail, error)
@@ -35,14 +36,73 @@ func (s *Storage) GetUserOrderHistory(ctx context.Context, email string) ([]mode
 
 	row, err := s.db.Query(ctx, query, email)
 	if err != nil {
-		return []models.OrderDetail{}, fmt.Errorf("error: %w", err)
+		return nil, fmt.Errorf("error: %w", err)
 	}
+	defer row.Close()
 
 	orderDetail := []models.OrderDetail{}
+	var current *models.OrderDetail
 
 	for row.Next() {
-		item := models.OrderDetail{}
-		err := row.Scan(item.OrderID, item.CreatedAt, item.TotalPrice, item.TransactionStatus, item.)
+		var (
+			orderID    int
+			createdAt  time.Time
+			totalPrice string
+			txStatus   string
+			item       models.OrderItemDetail
+		)
+
+		err := row.Scan(
+			&orderID, &createdAt, &totalPrice, &txStatus,
+			&item.ProductID, &item.ProductName, &item.Quantity, &item.UnitPrice,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("insert scan: %w", err)
+		}
+
+		if current == nil || current.OrderID != orderID {
+			orderDetail = append(orderDetail, models.OrderDetail{
+				OrderID:           orderID,
+				CreatedAt:         createdAt,
+				TotalPrice:        totalPrice,
+				TransactionStatus: txStatus,
+			})
+			current = &orderDetail[len(orderDetail)-1]
+		}
+		current.Items = append(current.Items, item)
 	}
 
+	return orderDetail, nil
+}
+
+func (s *Storage) GetPopularProducts(ctx context.Context) ([]models.PopularProduct, error) {
+	query := `SELECT p.id, p.name, SUM(oi.quantity) AS total_sold FROM products 
+	JOIN order_items oi ON p.id = oi.product_id GROUP BY p.id, p.name ORDER BY total_sold DESC`
+
+	row, err := s.db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("error: %w", err)
+	}
+	defer row.Close()
+
+	pp := []models.PopularProduct{}
+
+	for row.Next() {
+		var (
+			id   int
+			name string
+			sum  int
+		)
+		err := row.Scan(&id, &name, &sum)
+		if err != nil {
+			return nil, fmt.Errorf("error: %w", err)
+		}
+		pp = append(pp, models.PopularProduct{
+			ProductID:   id,
+			ProductName: name,
+			TotalSold:   sum,
+		})
+	}
+
+	return pp, nil
 }
