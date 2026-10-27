@@ -139,7 +139,8 @@ func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []mode
 	for _, item := range items {
 		price := 0
 		err := tx.QueryRow(ctx, `UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1
-		RETURNING price`, item.Quantity, item.ID).Scan(&price)
+		RETURNING price`, item.Quantity, item.ProductID).Scan(&price)
+		allPrice += price * item.Quantity
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return 0, fmt.Errorf("product %d: %w", item.ProductID, ErrNotFound)
@@ -151,7 +152,7 @@ func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []mode
 	}
 
 	var orderID int
-	err = tx.QueryRow(ctx, `INSERT INTO orders (user_id, total_price) VALUES ($1, $2) RETURNING id`).Scan(&orderID)
+	err = tx.QueryRow(ctx, `INSERT INTO orders (user_id, total_price) VALUES ($1, $2) RETURNING id`, userID, allPrice).Scan(&orderID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, ErrNotFound

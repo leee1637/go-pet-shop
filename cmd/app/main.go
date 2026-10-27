@@ -4,7 +4,9 @@ import (
 	"context"
 	"go-pet-shop/internal/config"
 	"go-pet-shop/internal/handlers"
+	"go-pet-shop/internal/handlers/order"
 	"go-pet-shop/internal/handlers/product"
+	"go-pet-shop/internal/handlers/user"
 	"go-pet-shop/internal/lib/logger"
 	"go-pet-shop/internal/storage/postgres"
 	"log/slog"
@@ -14,8 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -42,21 +43,51 @@ func main() {
 	}()
 
 	// Init router
-	router := chi.NewRouter()
-
+	router := gin.New()
 	// Middlewares
-	router.Use(middleware.RequestID)
-	router.Use(middleware.Recoverer)
-	router.Use(middleware.URLFormat)
-	router.Use(logger.CustomLogger(log))
+	router.Use(gin.Recovery())
+	router.Use(handlers.GinLogger(log))
 
 	// Handlers
-	productHandler := product.New(log, storage)
-	router.Get("/health", handlers.StatusHandler)
-	router.Get("/products", productHandler.GetAllProducts)
-	router.Post("/products", productHandler.CreateProduct)
-	router.Delete("/products/{id}", productHandler.DeleteProduct)
-	router.Put("/products/{id}", productHandler.UpdateProduct)
+	// Метод	URL	Описание
+	// POST	/users	Создать пользователя
+	// GET	/users	Получить список пользователей
+	// GET	/users/{email}	Получить пользователя по email
+	// GET	/users/{email}/orders	Получить заказы пользователя
+	// POST	/products	Добавить новый товар
+	// GET	/products	Получить список товаров
+	// GET	/products/{id}	Получить товар по ID
+	// PUT	/products/{id}	Обновить товар
+	// DELETE	/products/{id}	Удалить товар
+	// POST	/orders	Создать заказ
+	// POST	/orders/{id}/items	Добавить позицию к заказу
+	// GET	/orders/{id}	Получить детали заказа
+	// POST	/checkout	Оформление заказа (транзакция)
+	// GET	/users/{email}/history	История заказов и транзакций
+	// GET	/products/popular	Популярные товары (аналитика)
+	// GET	/health	Проверка состояния сервера
+
+	productsHandler := product.New(log, storage)
+	usersHandler := user.New(log, storage)
+	ordersHandler := order.New(log, storage)
+
+	router.GET("/health", handlers.StatusHandler)
+
+	router.GET("/users", usersHandler.GetAllUsers)
+	router.GET("/users/:email", usersHandler.GetUserByEmail)
+	router.GET("/users/:email/orders", ordersHandler.GetOrdersByUserEmail)
+	router.POST("/users", usersHandler.CreateUser)
+	router.POST("/products", productsHandler.GetAllProducts)
+	router.GET("/products", productsHandler.GetAllProducts)
+	router.GET("/products/:id", productsHandler.GetProductByID)
+	router.PUT("/products/:id", productsHandler.UpdateProduct)
+	router.DELETE("/products/:id", productsHandler.DeleteProduct)
+	router.POST("/orders", ordersHandler.CreateOrder)
+	router.POST("/orders/:id/items", ordersHandler.GetOrderItemsByOrderID)
+	router.GET("/orders/:id", ordersHandler.GetOrderByID)
+	router.POST("/checkout", ordersHandler.PlaceOrder)
+	router.GET("/users/:email/history", ordersHandler.GetUserOrderHistory)
+	router.GET("/products/popular", productsHandler.GetPopularProducts)
 
 	// Settings and started server
 	srv := &http.Server{
