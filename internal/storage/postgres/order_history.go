@@ -26,8 +26,8 @@ import (
 // }
 
 func (s *Storage) GetUserOrderHistory(ctx context.Context, email string) ([]models.OrderDetail, error) {
-	query := `SELECT o.id, o.created_at, o.total_price, t.status AS tx_status,
-	oi.product_id, p.name, p.stock, p.price AS unit_price FROM orders o
+	query := `SELECT o.id, o.created_at, o.total_price, COALESCE(t.status, 'unknown') AS tx_status ,
+	oi.product_id, p.name, oi.quantity, p.price AS unit_price FROM orders o
 	JOIN users u ON o.user_id = u.id
 	LEFT JOIN transactions t ON t.order_id = o.id
 	JOIN order_items oi ON oi.order_id = o.id

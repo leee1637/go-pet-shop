@@ -29,9 +29,23 @@ type OrderItem struct {
 	Quantity  int
 }
 
+type PopularProduct struct {
+	ProductID   int
+	ProductName string
+	TotalSold   int
+}
+
 type OrderDetail struct {
-	ID        int
-	OrderID   int
-	ProductID int
-	Quantity  int
+	OrderID           int
+	CreatedAt         time.Time
+	TotalPrice        string
+	TransactionStatus string
+	Items             []OrderItemDetail
+}
+
+type OrderItemDetail struct {
+	ProductID   int
+	ProductName string
+	Quantity    int
+	UnitPrice   string
 }

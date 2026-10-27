@@ -32,7 +32,7 @@ func (s *Storage) CreateOrder(ctx context.Context, order models.Order) (int, err
 func (s *Storage) AddOrderItem(ctx context.Context, orderItem models.OrderItem) error {
 	query := `INSERT INTO order_items (order_id, product_id, quantity) VALUES ($1, $2, $3)`
 
-	_, err := s.db.Query(ctx, query, orderItem.OrderID, orderItem.ProductID, orderItem.Quantity)
+	_, err := s.db.Exec(ctx, query, orderItem.OrderID, orderItem.ProductID, orderItem.Quantity)
 	if err != nil {
 		return fmt.Errorf("create order item: %w", err)
 	}
@@ -85,7 +85,6 @@ func (s *Storage) GetOrdersByUserEmail(ctx context.Context, email string) ([]mod
 
 func (s *Storage) GetOrderItemsByOrderID(ctx context.Context, orderID int) ([]models.OrderItem, error) {
 	query := `SELECT i.id, i.order_id, i.product_id, i.quantity FROM order_items i
-	JOIN orders o i ON i.order_id = o.id
 	WHERE o.id = $1`
 
 	row, err := s.db.Query(ctx, query, orderID)
@@ -147,8 +146,6 @@ func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []mode
 			}
 			return 0, fmt.Errorf("decrease stock product %d: %w", item.ProductID, err)
 		}
-
-		allPrice = allPrice + price
 	}
 
 	var orderID int
@@ -161,7 +158,7 @@ func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []mode
 	}
 
 	for _, item := range items {
-		_, err = tx.Query(ctx, `INSERT INTO order_items (order_id, product_id, quantity)
+		_, err = tx.Exec(ctx, `INSERT INTO order_items (order_id, product_id, quantity)
 		 VALUES ($1, $2, $3)`, orderID, item.ProductID, item.Quantity)
 		if err != nil {
 			return 0, fmt.Errorf("decrease stock product %d: %w", item.ProductID, err)

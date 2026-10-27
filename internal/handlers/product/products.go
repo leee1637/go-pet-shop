@@ -120,6 +120,7 @@ func (h *Handler) DeleteProduct(g *gin.Context) {
 	if err != nil {
 		h.log.Error("failed to delete product", slog.String("error", err.Error()))
 		g.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
 	}
 
 	g.JSON(http.StatusOK, gin.H{"status": "deleted"})
