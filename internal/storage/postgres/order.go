@@ -118,6 +118,15 @@ func (s *Storage) GetOrderItemsByOrderID(ctx context.Context, orderID int) ([]mo
 // Методы (storage interface):
 
 func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []models.OrderItem) (int, error) {
+	if len(items) == 0 {
+		return 0, storage.ErrInvalidInput
+	}
+
+	for _, item := range items {
+		if item.Quantity <= 0 {
+			return 0, storage.ErrInvalidInput
+		}
+	}
 	tx, err := s.db.Begin(ctx)
 
 	if err != nil {
@@ -138,10 +147,6 @@ func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []mode
 	var allPrice float64
 
 	for _, item := range items {
-		if item.Quantity <= 0 {
-			fmt.Printf("skip item - quantity <= 0. ID: %d", item.ID)
-			continue
-		}
 		var price float64
 		err := tx.QueryRow(ctx, `UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1
 		RETURNING price`, item.Quantity, item.ProductID).Scan(&price)
