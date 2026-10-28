@@ -5,13 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"go-pet-shop/internal/models"
+	"go-pet-shop/internal/storage"
 
 	"github.com/jackc/pgx/v5"
-)
-
-var (
-	ErrNotFound     = errors.New("not found")
-	ErrInvalidInput = errors.New("invalid input")
 )
 
 // ❗ Памятка - Контекст не должен создаваться через context.Background() внутри методов.
@@ -54,7 +50,7 @@ func (s *Storage) GetProductByID(ctx context.Context, id int) (models.Product, e
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return models.Product{}, ErrNotFound
+			return models.Product{}, storage.ErrNotFound
 		}
 
 		return models.Product{}, fmt.Errorf("error: %w", err)
@@ -92,7 +88,7 @@ func (s *Storage) DeleteProduct(ctx context.Context, id int) error {
 	}
 
 	if cmd.RowsAffected() == 0 {
-		return fmt.Errorf("%s: %w: id=%d", fn, ErrNotFound, id)
+		return fmt.Errorf("%s: %w: id=%d", fn, storage.ErrNotFound, id)
 	}
 
 	return nil
@@ -110,7 +106,7 @@ func (s *Storage) UpdateProduct(ctx context.Context, p models.Product) error {
 	}
 
 	if cmd.RowsAffected() == 0 {
-		return fmt.Errorf("%s: %w: id=%d", fn, ErrNotFound, p.ID)
+		return fmt.Errorf("%s: %w: id=%d", fn, storage.ErrNotFound, p.ID)
 	}
 
 	return nil

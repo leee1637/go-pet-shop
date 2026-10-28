@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"go-pet-shop/internal/models"
+	"go-pet-shop/internal/storage"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
-
-var ErrConflict = errors.New("conflict")
 
 // CreateUser - создает пользователя
 func (s *Storage) CreateUser(ctx context.Context, user models.User) error {
@@ -22,7 +21,7 @@ func (s *Storage) CreateUser(ctx context.Context, user models.User) error {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return fmt.Errorf("%s: %w: email=%s", fn, ErrConflict, user.Email)
+			return fmt.Errorf("%s: %w: email=%s", fn, storage.ErrConflict, user.Email)
 		}
 		return fmt.Errorf("%s: %w", fn, err)
 	}
@@ -40,7 +39,7 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (models.User
 		email).Scan(&user.ID, &user.Name, &user.Email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return models.User{}, fmt.Errorf("%s: %w: email=%s", fn, ErrNotFound, email)
+			return models.User{}, fmt.Errorf("%s: %w: email=%s", fn, storage.ErrNotFound, email)
 		}
 		return models.User{}, fmt.Errorf("%s: %w", fn, err)
 	}

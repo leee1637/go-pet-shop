@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go-pet-shop/internal/models"
+	"go-pet-shop/internal/storage"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -49,7 +50,7 @@ func (s *Storage) GetOrderByID(ctx context.Context, id int) (models.Order, error
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return models.Order{}, ErrNotFound
+			return models.Order{}, storage.ErrNotFound
 		}
 
 		return models.Order{}, fmt.Errorf("error: %w", err)
@@ -85,6 +86,7 @@ func (s *Storage) GetOrdersByUserEmail(ctx context.Context, email string) ([]mod
 
 func (s *Storage) GetOrderItemsByOrderID(ctx context.Context, orderID int) ([]models.OrderItem, error) {
 	query := `SELECT i.id, i.order_id, i.product_id, i.quantity FROM order_items i
+	JOIN orders o ON o.id = i.order_id
 	WHERE o.id = $1`
 
 	row, err := s.db.Query(ctx, query, orderID)
@@ -128,21 +130,25 @@ func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []mode
 	err = tx.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, userEmail).Scan(&userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, ErrNotFound
+			return 0, storage.ErrNotFound
 		}
 		return 0, fmt.Errorf("get user by email: %w", err)
 	}
 
-	allPrice := 0
+	var allPrice float64
 
 	for _, item := range items {
-		price := 0
+		if item.Quantity <= 0 {
+			fmt.Printf("skip item - quantity <= 0. ID: %d", item.ID)
+			continue
+		}
+		var price float64
 		err := tx.QueryRow(ctx, `UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1
 		RETURNING price`, item.Quantity, item.ProductID).Scan(&price)
-		allPrice += price * item.Quantity
+		allPrice += price * float64(item.Quantity)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return 0, fmt.Errorf("product %d: %w", item.ProductID, ErrConflict)
+				return 0, fmt.Errorf("product %d: %w", item.ProductID, storage.ErrConflict)
 			}
 			return 0, fmt.Errorf("decrease stock product %d: %w", item.ProductID, err)
 		}
@@ -152,7 +158,7 @@ func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []mode
 	err = tx.QueryRow(ctx, `INSERT INTO orders (user_id, total_price) VALUES ($1, $2) RETURNING id`, userID, allPrice).Scan(&orderID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, ErrNotFound
+			return 0, storage.ErrNotFound
 		}
 		return 0, fmt.Errorf("get user by email: %w", err)
 	}

@@ -66,21 +66,25 @@ func (h *Handler) CreateOrder(g *gin.Context) {
 }
 
 type createRequsetOrderItem struct {
-	OrderID   int `json:"order_id"`
 	ProductID int `json:"product_id"`
 	Quantity  int `json:"quantity"`
 }
 
 func (h *Handler) AddOrderItem(g *gin.Context) {
+	id, err := strconv.Atoi(g.Param("id"))
+	if err != nil {
+		g.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	var createOrder createRequsetOrderItem
-	err := g.ShouldBindJSON(&createOrder)
+	err = g.ShouldBindJSON(&createOrder)
 	if err != nil {
 		g.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	orderItem := models.OrderItem{
-		OrderID:   createOrder.OrderID,
+		OrderID:   id,
 		ProductID: createOrder.ProductID,
 		Quantity:  createOrder.Quantity,
 	}
