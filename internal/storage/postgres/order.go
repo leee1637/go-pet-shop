@@ -142,7 +142,7 @@ func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []mode
 		allPrice += price * item.Quantity
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return 0, fmt.Errorf("product %d: %w", item.ProductID, ErrNotFound)
+				return 0, fmt.Errorf("product %d: %w", item.ProductID, ErrConflict)
 			}
 			return 0, fmt.Errorf("decrease stock product %d: %w", item.ProductID, err)
 		}

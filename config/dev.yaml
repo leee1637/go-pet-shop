@@ -1,4 +1,4 @@
-env: "dev" # local, dev, prod
+env: "dev"
 http_server:
   address: "0.0.0.0:8080"
   timeout: 4s

@@ -118,6 +118,10 @@ func (h *Handler) DeleteProduct(g *gin.Context) {
 
 	err = h.storage.DeleteProduct(g.Request.Context(), id)
 	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			g.JSON(http.StatusNotFound, gin.H{"error": "not found product"})
+			return
+		}
 		h.log.Error("failed to delete product", slog.String("error", err.Error()))
 		g.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return

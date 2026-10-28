@@ -50,6 +50,10 @@ func (h *Handler) CreateUser(g *gin.Context) {
 
 	err = h.storage.CreateUser(g.Request.Context(), user)
 	if err != nil {
+		if errors.Is(err, storage.ErrConflict) {
+			g.JSON(http.StatusConflict, gin.H{"error": "email already exists"})
+			return
+		}
 		h.log.Error("failed to create user", slog.String("error", err.Error()))
 		g.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
